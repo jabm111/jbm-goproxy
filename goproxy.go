@@ -2,9 +2,9 @@ package main
 
 import (
 	"crypto/tls"
-    "errors"
-    "fmt"
-    "html/template"
+	"errors"
+	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -16,27 +16,27 @@ import (
 )
 
 type Config struct {
-    ProxyScheme string
-    ProxyHost string
-    StaticDir string
-    StaticPrefix string
-    Port string
-    Domains string
-    CertCacheDir string
+	ProxyScheme  string
+	ProxyHost    string
+	StaticDir    string
+	StaticPrefix string
+	Port         string
+	Domains      string
+	CertCacheDir string
 }
 
 var config *Config
 
 func setGlobalConfig() {
-    config = &Config{
-        ProxyScheme: getEnv("GO_PROXY_SCHEME", "http"),
-        ProxyHost: getEnv("GO_PROXY_SCHEME", "localhost:8080"),
-        StaticDir: getEnv("GO_PROXY_SCHEME", "static"),
-        StaticPrefix: getEnv("GO_PROXY_SCHEME", "static"),
-        Port: getEnv("GO_PROXY_SCHEME", ":8888"),
-        Domains: getEnv("GO_PROXY_SCHEME", ""),
-        CertCacheDir: getEnv("GO_PROXY_SCHEME", "/home/gouser/letsencrypt"),
-    }
+	config = &Config{
+		ProxyScheme:  getEnv("GO_PROXY_SCHEME", "http"),
+		ProxyHost:    getEnv("GO_PROXY_HOST", "localhost:8080"),
+		StaticDir:    getEnv("GO_STATIC_DIR", "static"),
+		StaticPrefix: getEnv("GO_STATIC_PREFIX", "static"),
+		Port:         getEnv("GO_PORT", ":8888"),
+		Domains:      getEnv("GO_DOMAINS", ""),
+		CertCacheDir: getEnv("GO_CERT_CACHE_DIR", "/home/gouser/letsencrypt"),
+	}
 }
 
 func getEnv(key, fallback string) string {
@@ -51,25 +51,25 @@ var templates = template.Must(template.New("basic").Parse(`<html><body><p>{{.}}<
 
 func defineRoutes(mux *http.ServeMux) {
 	proxy := &httputil.ReverseProxy{
-        Director: func(req *http.Request) {
-            req.Header.Add("X-Forwarded-Host", req.Host)
-            req.Header.Add("X-Origin-Host", config.ProxyHost)
-            req.URL.Scheme = config.ProxyScheme
-            req.URL.Host = config.ProxyHost
-            fmt.Printf("\ngoproxy: %+v", req.RequestURI)
-        },
-        ModifyResponse: func(res *http.Response) error {
-            fmt.Printf("\ngoproxy: modify: %+v", res);
-            if (res.StatusCode == 404) {
-                return errors.New("nope")
-            }
+		Director: func(req *http.Request) {
+			req.Header.Add("X-Forwarded-Host", req.Host)
+			req.Header.Add("X-Origin-Host", config.ProxyHost)
+			req.URL.Scheme = config.ProxyScheme
+			req.URL.Host = config.ProxyHost
 
-            return nil
-        },
-        ErrorHandler: func(res http.ResponseWriter, req *http.Request, err error) {
-            templates.ExecuteTemplate(res, "basic", "An error occurred")
-        },
-    }
+			fmt.Printf("goproxy: %+v\n", req.RequestURI)
+		},
+		ModifyResponse: func(res *http.Response) error {
+			if res.StatusCode >= 500 {
+				return errors.New("Error: 500")
+			}
+
+			return nil
+		},
+		ErrorHandler: func(res http.ResponseWriter, req *http.Request, err error) {
+			templates.ExecuteTemplate(res, "basic", "An error occurred")
+		},
+	}
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		proxy.ServeHTTP(w, r)
@@ -100,8 +100,8 @@ func printConsole(s string) {
 }
 
 func main() {
-    setGlobalConfig()
-    fmt.Printf("goproxy config: %+v", config);
+	setGlobalConfig()
+	fmt.Printf("goproxy: config: %+v\n", config)
 
 	if config.Port == ":443" {
 		whitelist := strings.Split(config.Domains, ",")
