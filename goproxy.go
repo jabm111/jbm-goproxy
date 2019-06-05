@@ -35,7 +35,7 @@ func setGlobalConfig() {
 		StaticPrefix: getEnv("GO_STATIC_PREFIX", "static"),
 		Port:         getEnv("GO_PORT", ":8888"),
 		Domains:      getEnv("GO_DOMAINS", ""),
-		CertCacheDir: getEnv("GO_CERT_CACHE_DIR", "/home/gouser/letsencrypt"),
+		CertCacheDir: getEnv("GO_CERT_CACHE_DIR", getEnv("HOME", "/home/gouser")+"/letsencrypt"),
 	}
 }
 
@@ -108,12 +108,10 @@ func main() {
 
 		var hostWhitelist autocert.HostPolicy
 
-		if len(whitelist) == 1 {
-			hostWhitelist = autocert.HostWhitelist(whitelist[0])
-		} else if len(whitelist) == 2 {
-			hostWhitelist = autocert.HostWhitelist(whitelist[0], whitelist[1])
+		if len(whitelist) >= 1 {
+			hostWhitelist = autocert.HostWhitelist(whitelist...)
 		} else {
-			panic("Whitelist must be 1 or 2 domains comma separated in the GO_DOMAINS environment variable.")
+			panic("Whitelist must be at least 1 domain comma separated in the GO_DOMAINS environment variable.")
 		}
 
 		certCacheDir := config.CertCacheDir
