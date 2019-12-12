@@ -123,7 +123,10 @@ func main() {
 		}
 		server := makeHTTPServer()
 		server.Addr = config.Port
-		server.TLSConfig = manager.TLSConfig()
+		// server.TLSConfig = manager.TLSConfig()
+		server.TLSConfig = &tls.Config{
+			GetCertificate: manager.GetCertificate,
+		}
 		server.TLSConfig.MinVersion = tls.VersionTLS12
 		server.TLSConfig.CurvePreferences = []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256}
 		server.TLSConfig.PreferServerCipherSuites = true
